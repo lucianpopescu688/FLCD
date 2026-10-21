@@ -1,0 +1,74 @@
+int total_servers = 5;
+int active_count = 0;
+int failed_count = 0;
+int load_score = 0;
+boolean maintenance_mode = false;
+string report = "Fleet check starting.";
+ip_address[5] fleet_ips;
+
+fleet_ips[0] = "192.168.1.10";
+fleet_ips[1] = "192.168.1.11";
+fleet_ips[2] = "192.168.1.12";
+fleet_ips[3] = "192.168.1.13";
+fleet_ips[4] = "192.168.1.14";
+
+log_alert(report);
+
+for (int index = 0; index < total_servers; index = index + 1) {
+    try {
+        ping_server(fleet_ips[index]);
+        active_count = active_count + 1;
+    } catch {
+        log_alert("Server unreachable, replacing.");
+        fleet_ips[index] = "192.168.1.50";
+        spin_up_instance(fleet_ips[index]);
+    }
+}
+
+failed_count = total_servers - active_count;
+load_score = active_count * 100 / total_servers;
+
+if (load_score >= 80) {
+    log_alert("Fleet health is good.");
+} else {
+    if (load_score >= 50) {
+        log_alert("Fleet partially degraded.");
+        maintenance_mode = true;
+    } else {
+        log_alert("Fleet critically degraded!");
+        maintenance_mode = true;
+    }
+}
+
+if (active_count <= 1 or failed_count >= 4) {
+    log_alert("Emergency: immediate intervention needed.");
+    spin_up_instance("192.168.1.100");
+}
+
+int cycle = 0;
+while (maintenance_mode == true and cycle <= 3) {
+    log_alert("Running maintenance cycle.");
+    for (int m = 0; m < total_servers; m = m + 1) {
+        ping_server(fleet_ips[m]);
+    }
+    cycle = cycle + 1;
+    wait_seconds(30);
+    maintenance_mode = false;
+}
+
+switch (load_score % 3) {
+    case 0:
+        log_alert("Load balanced evenly.");
+        break;
+    case 1:
+        log_alert("Slight imbalance detected.");
+        break;
+    case 2:
+        log_alert("Rebalancing needed.");
+        break;
+    default:
+        log_alert("Unexpected load calculation.");
+}
+
+log_alert("Fleet maintenance complete.");
+log_alert(failed_count);

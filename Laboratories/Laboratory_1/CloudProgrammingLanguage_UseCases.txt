@@ -1,0 +1,234 @@
+Cloud Programming Language - Statement Use Cases Documentation
+
+Language Purpose: This language allows system administrators to script sequences of actions for managing cloud infrastructure and system processes (systemd-like). It supports spinning up and tearing down server instances, managing background services with dependency chains, handling batch operations on groups of services, and monitoring system health with simple, readable syntax.
+
+Datatypes:
+- int: standard integer for counters, thresholds, port numbers, and status codes
+- string: text values for log messages, IP addresses, hostnames, and labels
+- boolean: true or false, used for flags and conditional checks (e.g., returned by autostart())
+- process: a background service with an execution state (RUNNING, STOPPED, ERROR), an optional automatic startup setting, and optional dependencies on other processes
+- state: an enumeration representing a process's execution status (RUNNING, STOPPED, ERROR), returned by the status() builtin function
+- group: an iterable collection of processes, used to bundle related services together for batch operations
+- ip_address: a network address identifier for servers, endpoints, and load balancers
+- array types: any simple type can be declared as a fixed-size array (e.g., int[10], ip_address[5], process[3])
+
+
+1. Declaration Statement
+Use Cases:
+- Declaring processes with explicit dependency chains so the system knows the correct startup order.
+- Bundling related services into a group for batch operations like starting or stopping an entire tier at once.
+- Allocating arrays of strings or integers for managing configuration lists or metrics.
+- Initializing configuration variables (thresholds, retry counts) at the moment of declaration to prevent uninitialized bugs.
+Example:
+```
+process net;
+process db { depends_on: net };
+process api { depends_on: db };
+group backend = [db, api];
+int max_retries = 3;
+ip_address[5] server_ips;
+int threshold = 80;
+boolean auto_scale = true;
+```
+Justification: Process declarations with dependencies allow the language to enforce a correct bottom-up startup order (net must start before db, db before api). Group declarations allow batch operations on multiple services at once. Typed variable declarations prevent confusing a counter with a process reference or a string with a boolean.
+
+2. Assignment Statement
+Use Cases:
+- Updating variable values when cloud conditions change (for example, when a server gets too busy and the load threshold needs adjusting).
+- Storing computed values or updated configuration into variables for later use.
+- Updating specific elements in an array (e.g., replacing a failing IP address in a server list).
+Example:
+```
+current_load = 85;
+threshold = 90;
+server_ips[2] = "192.168.1.105";
+max_retries = max_retries + 1;
+```
+Justification: Cloud infrastructure is dynamic. Variables must be updatable to reflect the real-time state of the system. Array element assignments are crucial for managing distributed setups where individual entries (like IP addresses or node references) change over time.
+
+3. IO Statement (Input/Output)
+Use Cases:
+- Interacting directly with the cloud provider's API to manage resource lifecycles (create and destroy virtual machines or containers).
+- Querying the network state by pinging servers to check their availability.
+- Outputting logs, alerts, and metrics to the system console for DevOps monitoring and debugging.
+- Logging variable values (not just string literals) so administrators can inspect runtime metrics.
+Example:
+```
+spin_up_instance(primary_server);
+kill_instance(backup_server);
+ping_server("10.0.0.1");
+log_alert("Scaling up cluster due to high traffic.");
+log_alert(current_load);
+```
+Justification: These domain-specific commands replace standard generic IO (like print or read). They provide a natural vocabulary for cloud operations: spin_up_instance and kill_instance manage the lifecycle of VMs, ping_server checks availability, and log_alert outputs monitoring information.
+
+4. Process Management Statement
+Use Cases:
+- Starting, stopping, and restarting background services as part of deployment or recovery procedures.
+- Enabling or disabling the automatic startup of a service so it persists (or not) across system reboots.
+- Querying a process's current state (RUNNING, STOPPED, ERROR) using the status() builtin to make decisions.
+- Checking whether a process has autostart enabled using the autostart() builtin before toggling it.
+Example:
+```
+start(db);
+stop(api);
+restart(net);
+enable(db);
+disable(api);
+
+if (status(db) == RUNNING) {
+    start(api);
+}
+
+if (autostart(net) == false) {
+    enable(net);
+}
+```
+Justification: Managing the lifecycle of system processes is the core domain of this language. These commands provide a direct, readable way to control services, similar to systemd's start, stop, restart, enable, and disable operations. The status() and autostart() builtins allow scripts to query the current state before acting.
+
+5. If Statement
+Use Cases:
+- Checking if a process is in an error state and restarting it automatically.
+- Comparing metrics against thresholds (e.g., is current load greater than the threshold?) and scaling up resources.
+- Evaluating whether autostart is enabled for a critical service and enabling it if not.
+- Handling fallback logic using the 'else' branch when a primary condition fails.
+Example:
+```
+if (status(db) == ERROR) {
+    restart(db);
+    log_alert("Database was in error state, restarting.");
+} else {
+    log_alert("Database is healthy.");
+}
+
+if (current_load > threshold) {
+    spin_up_instance(backup_server);
+    log_alert("Load exceeded threshold, scaling up.");
+}
+```
+Justification: Conditional execution is mandatory for reactive systems. Cloud scripts must autonomously decide whether to restart services, scale up, scale down, or alert administrators based on real-time data without human intervention.
+
+6. Switch Statement
+Use Cases:
+- Executing different recovery routines based on the state of a process (RUNNING, STOPPED, ERROR).
+- Routing logic based on distinct HTTP status codes returned by a service health check.
+Example:
+```
+switch (status(api)) {
+    case RUNNING:
+        log_alert("API service is healthy.");
+        break;
+    case STOPPED:
+        log_alert("API is stopped, attempting to start.");
+        start(api);
+        break;
+    case ERROR:
+        log_alert("API crashed, full restart required.");
+        restart(api);
+        break;
+    default:
+        log_alert("Unknown process state.");
+}
+```
+Justification: A switch statement provides a much cleaner, more efficient, and readable structure than a long chain of if-else statements when evaluating a single value against multiple known constants (like process states or HTTP codes).
+
+7. While Statement
+Use Cases:
+- Polling a process until it transitions to the RUNNING state after a restart.
+- Continuously monitoring a server's availability until it finishes booting up.
+- Running a background health check loop that waits between iterations.
+Example:
+```
+restart(db);
+while (status(db) != RUNNING) {
+    log_alert("Waiting for database to come online...");
+    wait_seconds(5);
+}
+start(api);
+```
+Justification: Some operations (like restarting a service or booting a virtual machine) are asynchronous and take an unknown amount of time. The while loop blocks execution until the required state is achieved before proceeding to dependent operations.
+
+8. For Statement
+Use Cases:
+- Iterating through a group of services to start, stop, or check the status of each one.
+- Spinning up a deterministic batch of worker instances.
+- Searching an array of server IPs to find an available slot or update each entry.
+Example:
+```
+for (int i = 0; i < 10; i = i + 1) {
+    start(services[i]);
+    log_alert("Started service.");
+}
+
+for (int i = 0; i < 3; i = i + 1) {
+    ping_server(server_ips[i]);
+}
+```
+Justification: When the number of iterations is known (e.g., the size of a service group or an array of IPs), a for loop is the most concise and safe way to iterate, wrapping initialization, condition, and update in one compact line.
+
+9. Try Statement
+Use Cases:
+- Attempting a risky network operation (like pinging a remote server) that might time out.
+- Catching process startup failures (e.g., when a dependency is missing or crashes during initialization).
+- Ensuring a script doesn't completely crash if one non-critical server fails to respond.
+Example:
+```
+try {
+    ping_server("192.168.1.100");
+    start(api);
+    log_alert("Connected and started API successfully.");
+} catch {
+    log_alert("Operation failed. Falling back to backup.");
+    start(backup_api);
+}
+```
+Justification: Cloud networks and background processes are inherently unreliable. Distributed scripts must be fault-tolerant. A generic try/catch structure is the standard mechanism for gracefully handling any runtime error (network timeouts, missing dependencies, crashed services) without crashing the entire script.
+
+10. Break Statement
+Use Cases:
+- Exiting a search loop the moment a target is found (e.g., finding the first crashed service in a group).
+- Escaping an infinite monitoring while-loop if a critical shutdown condition is triggered.
+Example:
+```
+for (int i = 0; i < 5; i = i + 1) {
+    if (status(services[i]) == ERROR) {
+        log_alert("Found crashed service, stopping scan.");
+        restart(services[i]);
+        break;
+    }
+}
+```
+Justification: It optimizes execution by preventing unnecessary iterations or API calls once the loop's goal has been accomplished (e.g., the first error has been found and handled).
+
+11. Continue Statement
+Use Cases:
+- Skipping over already-running services during a batch startup loop.
+- Filtering out healthy nodes when scanning for problems in a cluster.
+Example:
+```
+for (int i = 0; i < 10; i = i + 1) {
+    if (status(services[i]) == RUNNING) {
+        continue;
+    }
+    start(services[i]);
+    log_alert("Started a stopped service.");
+}
+```
+Justification: It reduces code nesting and improves readability by allowing the programmer to skip irrelevant items (already running services, healthy nodes) and jump straight to the next iteration.
+
+12. Wait Statement
+Use Cases:
+- Pacing API requests to avoid hitting rate limits enforced by the cloud provider.
+- Giving a process time to fully initialize before starting a dependent service.
+- Pausing between a stop and a restart to allow resources to be released cleanly.
+Example:
+```
+stop(db);
+wait_seconds(10);
+start(db);
+
+restart(api);
+wait_seconds(5);
+ping_server("10.0.0.1");
+```
+Justification: Without an explicit pause mechanism, scripts would bombard APIs instantly or start dependent services before their dependencies are ready. A wait command is a necessary timing primitive for orchestrating real-world cloud and process events.

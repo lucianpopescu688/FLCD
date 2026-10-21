@@ -1,0 +1,71 @@
+<program> ::= <statements_list>
+<statements_list> ::= <statement> | <statement> <statements_list>
+
+<statement> ::= <declaration_statement> | <assign_statement> | <IO_statement> | <process_statement> | <if_statement> | <switch_statement> | <while_statement> | <for_statement> | <try_statement> | <break_statement> | <continue_statement> | <wait_statement>
+
+<declaration_statement> ::= <type> <identifier> ";" | <type> <identifier> "=" <expression> ";" | "process" <identifier> ";" | "process" <identifier> "{" "depends_on" ":" <identifier_list> "}" ";" | "group" <identifier> "=" "[" <identifier_list> "]" ";"
+<identifier_list> ::= <identifier> | <identifier> "," <identifier_list>
+
+<assign_statement> ::= <identifier> "=" <expression> ";" | <identifier> "[" <expression> "]" "=" <expression> ";"
+<assign_statement_without_semicolon> ::= <identifier> "=" <expression> | <identifier> "[" <expression> "]" "=" <expression>
+
+<IO_statement> ::= <io_reserved_word> "(" <expression> ")" ";"
+<process_statement> ::= <process_reserved_word> "(" <expression> ")" ";"
+<wait_statement> ::= "wait_seconds" "(" <expression> ")" ";"
+
+<if_statement> ::= "if" "(" <condition> ")" "{" <statements_list> "}" <else_branch>
+<else_branch> ::= "else" "{" <statements_list> "}" | epsilon
+
+<switch_statement> ::= "switch" "(" <expression> ")" "{" <case_list> <default_case> "}"
+<case_list> ::= <case_statement> | <case_statement> <case_list>
+<case_statement> ::= "case" <constant> ":" <statements_list> "break" ";"
+<default_case> ::= "default" ":" <statements_list> | epsilon
+
+<while_statement> ::= "while" "(" <condition> ")" "{" <statements_list> "}"
+
+<for_initialization> ::= <declaration_statement> | <assign_statement>
+<for_statement> ::= "for" "(" <for_initialization> <condition> ";" <assign_statement_without_semicolon> ")" "{" <statements_list> "}"
+
+<break_statement> ::= "break" ";"
+<continue_statement> ::= "continue" ";"
+
+<try_statement> ::= "try" "{" <statements_list> "}" "catch" "{" <statements_list> "}"
+
+<condition> ::= <simple_condition> <condition_tail>
+<condition_tail> ::= <logical_operator> <simple_condition> <condition_tail> | epsilon
+<simple_condition> ::= <expression> <relation> <expression> | <boolean_constant> | "not" "(" <condition> ")" | "(" <condition> ")"
+
+<expression> ::= <multiplicative_expr> | <multiplicative_expr> <add_op> <expression>
+<multiplicative_expr> ::= <term> | <term> <mul_op> <multiplicative_expr>
+<term> ::= <identifier> | <identifier> "[" <expression> "]" | <number> | <string_constant> | <boolean_constant> | <state_constant> | <builtin_call> | "(" <expression> ")"
+
+<builtin_call> ::= <builtin_reserved_word> "(" <expression> ")"
+
+<type> ::= <simple_type> | <array_type>
+<simple_type> ::= "int" | "string" | "boolean" | "process" | "state" | "group" | "ip_address"
+<array_type> ::= <simple_type> "[" <number> "]"
+
+<constant> ::= <number> | <string_constant> | <boolean_constant> | <state_constant>
+
+<io_reserved_word> ::= "ping_server" | "spin_up_instance" | "kill_instance" | "log_alert"
+<process_reserved_word> ::= "start" | "stop" | "restart" | "enable" | "disable"
+<builtin_reserved_word> ::= "status" | "autostart"
+
+<add_op> ::= "+" | "-"
+<mul_op> ::= "*" | "/" | "%"
+<relation> ::= "==" | "!=" | "<" | "<=" | ">" | ">="
+<logical_operator> ::= "and" | "or"
+
+<identifier> ::= <letter> <identifier_tail>
+<identifier_tail> ::= <letter> <identifier_tail> | <digit> <identifier_tail> | "_" <identifier_tail> | epsilon
+
+<number> ::= "0" | <nonzero_digit> <digit_sequence> | "-" <nonzero_digit> <digit_sequence>
+<boolean_constant> ::= "true" | "false"
+<state_constant> ::= "RUNNING" | "STOPPED" | "ERROR"
+<string_constant> ::= "\"" <character_sequence> "\""
+
+<letter> ::= "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m" | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" | "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M" | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z"
+<digit> ::= "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<nonzero_digit> ::= "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9"
+<digit_sequence> ::= <digit> <digit_sequence> | epsilon
+<character_sequence> ::= <letter> <character_sequence> | <digit> <character_sequence> | " " <character_sequence> | "." <character_sequence> | ":" <character_sequence> | "-" <character_sequence> | "_" <character_sequence> | "," <character_sequence> | "!" <character_sequence> | "/" <character_sequence> | "@" <character_sequence> | "#" <character_sequence> | "?" <character_sequence> | "=" <character_sequence> | "&" <character_sequence> | epsilon

@@ -1,0 +1,15 @@
+# Binaries and executable artifacts
+*.exe
+scanner
+*.o
+*.obj
+*.zip
+
+# Temporary and system files
+.DS_Store
+Thumbs.db
+*.tmp
+
+# IDE configurations
+.idea/
+.vscode/

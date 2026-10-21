@@ -1,0 +1,135 @@
+%{
+/*
+ * Laboratory 3 - Lexical Analyzer (Flex Specification)
+ * Language: Cloud Infrastructure DSL
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "st.h"
+
+SymbolTable sym_table;
+PIF pif_table;
+int line_num = 1;
+int error_count = 0;
+%}
+
+%option noyywrap
+
+/* Definitions Section (Regular Expression Macros) */
+LETTER          [a-zA-Z]
+DIGIT           [0-9]
+NONZERO_DIGIT   [1-9]
+IDENTIFIER      {LETTER}({LETTER}|{DIGIT}|"_")*
+NUMBER_CONST    "0"|("-"?{NONZERO_DIGIT}{DIGIT}*)
+BOOL_CONST      "true"|"false"
+STATE_CONST     "RUNNING"|"STOPPED"|"ERROR"
+STRING_CHAR     [a-zA-Z0-9 .:\-_,!/@#?=&]
+STRING_CONST    \"{STRING_CHAR}*\"
+
+/* Lexical Error Patterns (Malformed Numbers/Identifiers & Strings) */
+ERR_NUM_ID      "-0"|("-"?"0"({DIGIT}|{LETTER}|"_")+)|("-"?{NONZERO_DIGIT}{DIGIT}*({LETTER}|"_")({LETTER}|{DIGIT}|"_")*)
+ERR_STRING      \"[^\"\n]*\"?
+
+%%
+
+"%%"[^%]*"%%"                               {
+                                                for (int i = 0; yytext[i] != '\0'; i++) {
+                                                    if (yytext[i] == '\n') line_num++;
+                                                }
+                                            }
+"//".*                                      { /* Ignore single-line comments */ }
+[ \t\r]+                                    { /* Ignore whitespace */ }
+\n                                          { line_num++; }
+
+"int"|"string"|"boolean"|"process"|"state"|"group"|"ip_address" {
+                                                genPIF(&pif_table, yytext, 0, yytext, line_num);
+                                            }
+"depends_on"|"if"|"else"|"switch"|"case"|"default"|"while"|"for"|"break"|"continue"|"try"|"catch"|"wait_seconds" {
+                                                genPIF(&pif_table, yytext, 0, yytext, line_num);
+                                            }
+"ping_server"|"spin_up_instance"|"kill_instance"|"log_alert" {
+                                                genPIF(&pif_table, yytext, 0, yytext, line_num);
+                                            }
+"start"|"stop"|"restart"|"enable"|"disable"|"status"|"autostart" {
+                                                genPIF(&pif_table, yytext, 0, yytext, line_num);
+                                            }
+"and"|"or"|"not"                            {
+                                                genPIF(&pif_table, yytext, 0, yytext, line_num);
+                                            }
+
+"=="|"!="|"<="|">="|"<"|">"|"="|"+"|"-"|"*"|"/"|"%" {
+                                                genPIF(&pif_table, yytext, 0, yytext, line_num);
+                                            }
+
+";"|":"|","|"("|")"|"["|"]"|"{"|"}"         {
+                                                genPIF(&pif_table, yytext, 0, yytext, line_num);
+                                            }
+
+{BOOL_CONST}|{STATE_CONST}                  {
+                                                int pos = st_pos(&sym_table, yytext, "CONST");
+                                                genPIF(&pif_table, "const", pos, yytext, line_num);
+                                            }
+
+{ERR_NUM_ID}                                {
+                                                printf("Lexical error at line %d: malformed identifier or numeric constant '%s'\n", line_num, yytext);
+                                                error_count++;
+                                            }
+
+{NUMBER_CONST}                              {
+                                                int pos = st_pos(&sym_table, yytext, "CONST");
+                                                genPIF(&pif_table, "const", pos, yytext, line_num);
+                                            }
+
+{STRING_CONST}                              {
+                                                int pos = st_pos(&sym_table, yytext, "CONST");
+                                                genPIF(&pif_table, "const", pos, yytext, line_num);
+                                            }
+
+{ERR_STRING}                                {
+                                                printf("Lexical error at line %d: invalid or unclosed string constant '%s'\n", line_num, yytext);
+                                                error_count++;
+                                            }
+
+{IDENTIFIER}                                {
+                                                int pos = st_pos(&sym_table, yytext, "ID");
+                                                genPIF(&pif_table, "id", pos, yytext, line_num);
+                                            }
+
+.                                           {
+                                                printf("Lexical error at line %d: unrecognized token '%s'\n", line_num, yytext);
+                                                error_count++;
+                                            }
+
+%%
+
+int main(int argc, char **argv) {
+    const char *input_file = (argc > 1) ? argv[1] : "program1.cloud";
+    const char *pif_file   = (argc > 2) ? argv[2] : "PIF.out";
+    const char *st_file    = (argc > 3) ? argv[3] : "ST.out";
+
+    FILE *fp = fopen(input_file, "r");
+    if (!fp) {
+        perror("Cannot open source program file");
+        return 1;
+    }
+    yyin = fp;
+
+    st_init(&sym_table);
+    pif_init(&pif_table);
+
+    yylex();
+    fclose(fp);
+
+    pif_write_file(&pif_table, pif_file);
+    st_write_file(&sym_table, st_file);
+
+    if (error_count == 0) {
+        printf("Lexical analysis completed successfully for '%s' (0 lexical errors).\n", input_file);
+        printf("Generated '%s' (%d tokens) and '%s' (%d unique symbols).\n",
+               pif_file, pif_table.count, st_file, sym_table.count);
+    } else {
+        printf("Lexical analysis finished for '%s' with %d lexical error(s).\n", input_file, error_count);
+    }
+    return 0;
+}

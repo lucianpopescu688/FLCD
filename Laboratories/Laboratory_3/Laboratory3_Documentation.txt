@@ -1,0 +1,302 @@
+================================================================================
+  FLCD Laboratory 3 - Lexical Analysis Documentation
+  Domain-Specific Language: Cloud Infrastructure Programming Language
+================================================================================
+
+Author: Student
+Course: Formal Languages and Compiler Design (FLCD)
+Instructor: Prof. Simona Motogna
+Date: October 2026
+
+
+================================================================================
+  1. Objectives and Requirements Overview
+================================================================================
+
+The goal of Laboratory 3 is to implement a Lexical Analyzer (Scanner) for the
+domain-specific Cloud Infrastructure Programming Language designed in Lab 1 and
+formalized in Lab 2.
+
+According to the official Lab 3 assignment (Lab3_2026.docx):
+1. Implementation Tool: Lex / Flex (generating C) paired with custom C data
+   structures (as chosen here).
+2. Input:
+   - Formal list of tokens (keywords, operators, separators, identifiers, constants).
+   - Source programs (valid programs from Lab 2 + an error-handling test program).
+3. Output:
+   - Program Internal Form (PIF): sequence of codified token representations.
+   - Symbol Table (ST): storage for user-defined identifiers and constants.
+   - Lexical Errors: line number and diagnostic messages for illegal tokens.
+4. Requirement 2 (Mandatory):
+   - Custom implementation of Symbol Table in C using a Hash Table or Binary
+     Search Tree (BST). Built-in or external library collections are not permitted.
+5. Deliverables:
+   - Complete C/Flex source code (scanner.lxi, st.h, st.c).
+   - Comprehensive documentation explaining tools, token detection, data
+     structures, and operations.
+   - Output files (PIF_*.out and ST_*.out) for all test cases.
+
+
+================================================================================
+  2. Toolchain and Build Architecture
+================================================================================
+
+The scanner is implemented using the classical Unix compiler toolchain:
+- Flex (Fast Lexical Analyzer Generator): Processes the specification file
+  `scanner.lxi` and translates regular expressions into an optimized Deterministic
+  Finite Automaton (DFA) in C (`lex.yy.c`).
+- GCC / Clang C Compiler: Compiles the generated `lex.yy.c` alongside the custom
+  Symbol Table implementation (`st.c`, `st.h`) into an executable `scanner`.
+
+Build Commands:
+  flex scanner.lxi
+  gcc -O2 lex.yy.c st.c -o scanner
+
+Execution Syntax:
+  ./scanner <source_file> <pif_output_file> <st_output_file>
+
+Example:
+  ./scanner program1.cloud.txt PIF_Program1.out ST_Program1.out
+
+
+================================================================================
+  3. Lexical Tokens Detection and Regular Expressions
+================================================================================
+
+The language vocabulary comprises 55 defined tokens divided into the following
+lexical categories:
+
+3.1. Reserved Words (Keywords)
+------------------------------
+All reserved words are matched case-sensitively and mapped directly to PIF with
+ST position = 0.
+- Data Types:
+    int, string, boolean, process, state, group, ip_address
+- Process Configuration & Lifecycle:
+    depends_on, start, stop, restart, enable, disable
+- Built-in Query Functions:
+    status, autostart
+- Cloud I/O Commands:
+    ping_server, spin_up_instance, kill_instance, log_alert
+- Control Flow & Timing:
+    if, else, switch, case, default, while, for, break, continue, try, catch, wait_seconds
+- Keyword Logical Operators:
+    and, or, not
+
+3.2. Operators
+--------------
+- Relational Operators (multi-character matched before single-character):
+    ==, !=, <=, >=, <, >
+- Arithmetic Operators:
+    +, -, *, /, %
+- Assignment Operator:
+    =
+
+3.3. Separators
+---------------
+- Punctuation & Delimiters:
+    ;   :   ,   (   )   [   ]   {   }
+
+3.4. Identifiers
+----------------
+- Definition: Starts with an ASCII letter, followed by zero or more letters,
+  digits, or underscores.
+- Regular Expression:
+    LETTER        [a-zA-Z]
+    DIGIT         [0-9]
+    IDENTIFIER    {LETTER}({LETTER}|{DIGIT}|"_")*
+- Examples: network, database, current_load, retry_count, node_ips, services
+
+3.5. Constants
+--------------
+- Numeric Constants:
+    Zero ("0") or an optional negative sign followed by a non-zero digit and
+    subsequent digits.
+    NONZERO_DIGIT   [1-9]
+    NUMBER_CONST    "0"|("-"?{NONZERO_DIGIT}{DIGIT}*)
+    Examples: 0, 1, 5, 45, 80, 100, -10
+    Malformed patterns (e.g., -0, 007) are rejected as lexical errors.
+
+- Boolean Constants:
+    BOOL_CONST      "true"|"false"
+
+- State Constants:
+    STATE_CONST     "RUNNING"|"STOPPED"|"ERROR"
+
+- String Constants:
+    Enclosed in double quotation marks containing allowed characters:
+    alphanumerics, spaces, and punctuation: . : - _ , ! / @ # ? = &
+    STRING_CHAR     [a-zA-Z0-9 .:\-_,!/@#?=&]
+    STRING_CONST    \"{STRING_CHAR}*\"
+    Examples: "10.0.0.1", "prod-east-1", "API is healthy."
+
+3.6. Comments and Whitespace
+----------------------------
+- Whitespace: Spaces, tabs (\t), and carriage returns (\r) are discarded.
+- Newlines (\n): Increment the global source line counter `line_num`.
+- Block / Header Comments: Delimited by `%% ... %%`. Handled by updating the
+  line counter for embedded newlines and discarding characters.
+- Single-line Comments: Prefixed by `// ... \n`. Discarded automatically.
+
+
+================================================================================
+  4. Symbol Table (ST) Data Structure and Operations
+================================================================================
+
+4.1. Mathematical Model and Design
+----------------------------------
+To fulfill Requirement 2, the Symbol Table is implemented in standard C (st.h, st.c)
+as a Hash Table using:
+- Capacity: m = 101 (a prime number, strictly adhering to Course 1, Slide 29:
+  |A| = m, with m prime to minimize clustering).
+- Hash Function: Sum of ASCII values modulo capacity, mapped to 1-based index:
+    h(k) = ( sum_{c in k} ASCII(c) mod m ) + 1
+- Collision Resolution: Open Addressing with Linear Probing:
+    probe(k, i) = ( (h(k) - 1 + i) mod m ) + 1,  for i = 0, 1, 2, ..., m - 1
+- Entry Structure (STEntry):
+    typedef struct {
+        int occupied;               /* 1 if slot contains a symbol, 0 if free */
+        char symbol[256];          /* Raw lexeme string */
+        char category[16];         /* "ID" or "CONST" */
+        int initial_hash;          /* h(k) value before collision resolution */
+    } STEntry;
+
+4.2. Core Operations and Algorithmic Complexity
+-----------------------------------------------
+1. `void st_init(SymbolTable *st)`
+   - Initializes table memory to zeroes.
+   - Time Complexity: O(m) = O(101) = O(1).
+
+2. `int st_hash(const char *symbol)`
+   - Computes h(k) = (sum_ASCII(symbol) % 101) + 1.
+   - Time Complexity: O(L), where L is the character length of the symbol.
+
+3. `int st_search(const SymbolTable *st, const char *symbol)`
+   - Computes h0 = st_hash(symbol). Probes linearly up to m slots.
+   - Stops when matching symbol is found (returns position 1..m) or an unoccupied
+     slot is encountered (returns -1, symbol does not exist).
+   - Time Complexity: O(1) average case, O(m) worst case (full collision cluster).
+
+4. `int st_insert(SymbolTable *st, const char *symbol, const char *category)`
+   - Checks if table is full (st->count >= m).
+   - Finds first unoccupied slot via linear probing, writes entry data, increments count.
+   - Returns assigned position (1..m).
+   - Time Complexity: O(1) average case, O(m) worst case.
+
+5. `int st_pos(SymbolTable *st, const char *symbol, const char *category)`
+   - Implements the formal pos(token, ST) operation (Course 1, Slide 25).
+   - Calls st_search(); if found, returns existing position. Otherwise, calls
+     st_insert() and returns newly allocated position.
+   - Guarantees each unique identifier or constant occupies exactly one ST slot.
+   - Time Complexity: O(1) average case.
+
+6. `void st_write_file(const SymbolTable *st, const char *filename)`
+   - Dumps table contents sorted by slot position into a structured human-readable file.
+
+
+================================================================================
+  5. Program Internal Form (PIF) Architecture
+================================================================================
+
+The PIF is generated according to Algorithm Scanning v2 (Course 1, Slide 24):
+- Data Structure: Array of PIFEntry structures:
+    typedef struct {
+        char token[256];   /* Token name (e.g., "id", "const", or exact keyword/operator) */
+        int st_pos;        /* 0 for keywords/operators/separators; 1..m for identifiers/constants */
+        char lexeme[256];  /* Original matched text */
+        int line;          /* Source code line number */
+    } PIFEntry;
+
+- Codification Strategy:
+    - Reserved words, operators, separators -> genPIF(&pif, lexeme, 0, lexeme, line)
+    - Identifiers -> genPIF(&pif, "id", st_pos(&st, lexeme, "ID"), lexeme, line)
+    - Constants   -> genPIF(&pif, "const", st_pos(&st, lexeme, "CONST"), lexeme, line)
+
+
+================================================================================
+  6. Lexical Error Handling Mechanism
+================================================================================
+
+To satisfy robust compiler error-detection standards, the Flex specification
+defines explicit error recovery rules positioned after the valid patterns:
+
+1. Malformed Numbers and Identifiers (`ERR_NUM_ID`):
+   - Pattern: `-0` | `(-?"0"[0-9a-zA-Z_]+)` | `(-?[1-9][0-9]*[a-zA-Z_][0-9a-zA-Z_]*)`
+   - Detects:
+     * Identifiers starting with digits (e.g., `123invalid_id`).
+     * Invalid leading zeros (e.g., `007`).
+     * Negative zero (`-0`).
+   - Action: Logs error with line number, increments `error_count`, does not insert into PIF/ST.
+
+2. Malformed or Unclosed Strings (`ERR_STRING`):
+   - Pattern: `\"[^\"\n]*\"?`
+   - Detects strings containing illegal characters (e.g., `$`) or strings left
+     unclosed before newline (e.g., `"This string never closes;`).
+   - Action: Logs diagnostic message with line number.
+
+3. Unrecognized Characters (`.` fallback):
+   - Matches any single character not part of the language alphabet (e.g., `@`, `!`).
+   - Action: Reports `Lexical error at line X: unrecognized token '...'`.
+
+
+================================================================================
+  7. Test Results and Verification
+================================================================================
+
+All test programs were executed through the compiled scanner with the following results:
+
+7.1. Program 1 (Cloud Infrastructure Deployment - program1.cloud.txt)
+--------------------------------------------------------------------
+- Status: SUCCESS (0 lexical errors)
+- PIF Output: `PIF_Program1.out` -> 537 tokens generated
+- ST Output:  `ST_Program1.out`  -> 54 unique symbols stored
+  * Identifiers (18): api, backend, cache, cluster_name, current_load, current_state,
+    database, i, j, max_retries, network, node_ips, num_nodes, primary_ip, retry_count,
+    scaling_needed, services, threshold
+  * Constants (36): numeric (0, 1, 2, 3, 5, 10, 45, 80), boolean (true, false),
+    state (RUNNING, STOPPED, ERROR), and string literals.
+
+7.2. Program 2 (Fleet Maintenance - program2.cloud.txt)
+-------------------------------------------------------
+- Status: SUCCESS (0 lexical errors)
+- PIF Output: `PIF_Program2.out` -> 335 tokens generated
+- ST Output:  `ST_Program2.out`  -> 41 unique symbols stored
+  * Exercises arithmetic (-, *, /, %), relational (>=, <=), logical (or), and
+    for-loop assignment initialization.
+
+7.3. Program 3 (Deliberate Error Test - program3_errors.cloud.txt)
+-----------------------------------------------------------------
+Input source code:
+  1: int valid_var = 10;
+  2: int 123invalid_id = 5;
+  3: int leading_zero = 007;
+  4: string bad_str = "Invalid$CharacterInString";
+  5: string unclosed_str = "This string never closes;
+  6: if (valid_var ! 5) {
+  7:     @illegal_symbol = -0;
+  8: }
+
+Scanner Diagnostic Output:
+  Lexical error at line 2: malformed identifier or numeric constant '123invalid_id'
+  Lexical error at line 3: malformed identifier or numeric constant '007'
+  Lexical error at line 4: invalid or unclosed string constant '"Invalid$CharacterInString"'
+  Lexical error at line 5: invalid or unclosed string constant '"This string never closes;'
+  Lexical error at line 6: unrecognized token '!'
+  Lexical error at line 7: unrecognized token '@'
+  Lexical error at line 7: malformed identifier or numeric constant '-0'
+  Lexical analysis finished for 'program3_errors.cloud.txt' with 7 lexical error(s).
+
+All 7 deliberate errors were detected at the exact source line without crashing,
+and scanning proceeded to parse subsequent valid tokens into `PIF_Program3_Errors.out`.
+
+
+================================================================================
+  8. Conclusion
+================================================================================
+
+The lexical analyzer fully satisfies all specifications for FLCD Laboratory 3:
+- Accurately tokenizes valid programs into standard Program Internal Form (PIF).
+- Manages identifiers and constants via an independently implemented C Hash Table
+  with linear probing and modulo ASCII summation.
+- Robustly detects and reports multi-class lexical errors with precise source coordinates.
+================================================================================
