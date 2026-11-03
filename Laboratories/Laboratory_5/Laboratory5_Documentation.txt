@@ -1,0 +1,235 @@
+================================================================================
+  FLCD Laboratory 5 - Finite Automata Integration Documentation
+  Domain-Specific Language: Cloud Infrastructure Programming Language
+================================================================================
+
+Author: Student
+Course: Formal Languages and Compiler Design (FLCD)
+Instructor: Prof. Simona Motogna
+Date: November 2026
+
+
+================================================================================
+  1. Objectives and Assignment Requirements
+================================================================================
+
+Statement (Lab5_2026.docx):
+  "For the domain specific programming language from Lab 1 (mini DSL),
+   integrate FA/RG for identifiers and constants into scanner."
+
+Requirement:
+  Perform lexical scanning with integrated Finite Automata (FA) / Regular
+  Grammars (RG) for:
+    1. Identifiers
+    2. Constants (Numeric constants and String constants)
+
+Deliverables:
+  - Complete source code with integrated Finite Automata
+  - Test files and generated Program Internal Form (PIF) and Symbol Table (ST)
+  - Full technical documentation
+
+
+================================================================================
+  2. Architecture & Design of FA Integration
+================================================================================
+
+In Laboratory 3, lexical analysis relied on Flex-generated regular expression
+matching. In Laboratory 4, formal Finite Automata (FA) and equivalent Regular
+Grammars (RG) were constructed for the Cloud DSL's identifiers and constants.
+
+In Laboratory 5, the scanner replaces regular expression pattern matching with
+explicit, state-driven Finite Automata. When the scanner encounters candidate
+lexemes:
+  - It delegates identifier recognition to the Identifier FA (`fa_identifier`).
+  - It delegates integer constant recognition to the Numeric FA (`fa_number`).
+  - It delegates string literal recognition to the String FA (`fa_string`).
+
+Each automaton:
+  - Starts in its initial state `q0`.
+  - Transitions through states character-by-character according to its transition
+    function `delta`.
+  - Determines acceptance based on whether scanning halts in an accepting
+    (final) state `F`.
+  - Returns the length of the longest recognized prefix.
+
+
+================================================================================
+  3. Formal Specifications of Finite Automata
+================================================================================
+
+3.1. Identifier Finite Automaton
+--------------------------------------------------------------------------------
+Recognizes valid identifiers according to the Cloud DSL specification:
+must start with an ASCII letter, followed by any combination of letters,
+digits, or underscores.
+
+Formal Definition:
+  M_id = (Q, Sigma, delta, q0, F)
+  - Q = {q0, q1}
+  - Sigma = {a-z, A-Z, 0-9, _}
+  - q0 = q0 (initial state)
+  - F = {q1} (accepting state)
+
+Transition Function (delta):
+  delta(q0, [a-zA-Z])       = q1
+  delta(q1, [a-zA-Z0-9_])   = q1
+
+Regular Grammar Equivalent (from Lab 4):
+  G = ({S, A}, Sigma, P, S)
+  P = {
+    S -> letter A | letter,
+    A -> letter A | digit A | underscore A | letter | digit | underscore
+  }
+
+
+3.2. Numeric Constant (Integer) Finite Automaton
+--------------------------------------------------------------------------------
+Recognizes valid integer constants:
+  - Exactly "0", OR
+  - Positive integer starting with a non-zero digit [1-9], OR
+  - Negative integer starting with "-" followed by a non-zero digit [1-9].
+Malformed numbers like -0, 007, or numbers with trailing letters are rejected.
+
+Formal Definition:
+  M_num = (Q, Sigma, delta, q0, F)
+  - Q = {q0, q1, q2, q3}
+  - Sigma = {'0', '1'-'9', '-'}
+  - q0 = q0 (initial state)
+  - F = {q1, q3} (accepting states)
+
+Transition Function (delta):
+  delta(q0, '0')     = q1    (Matches zero; q1 has no outgoing transitions)
+  delta(q0, '-')     = q2    (Negative prefix; requires nonzero digit)
+  delta(q0, [1-9])   = q3    (Positive integer start)
+  delta(q2, [1-9])   = q3    (Negative integer start)
+  delta(q3, [0-9])   = q3    (Subsequent digits)
+
+Regular Grammar Equivalent (from Lab 4):
+  G = ({S, A, B}, Sigma, P, S)
+  P = {
+    S -> '0',
+    S -> '-' A,
+    S -> [1-9] B | [1-9],
+    A -> [1-9] B | [1-9],
+    B -> [0-9] B | [0-9]
+  }
+
+
+3.3. String Constant Finite Automaton
+--------------------------------------------------------------------------------
+Recognizes double-quoted string literals containing allowed characters:
+alphanumerics and standard punctuation (. : - _ , ! / @ # ? = & and space).
+
+Formal Definition:
+  M_str = (Q, Sigma, delta, q0, F)
+  - Q = {q0, q1, q2}
+  - Sigma = {'"', valid_char_set}
+  - q0 = q0 (initial state)
+  - F = {q2} (accepting state)
+
+Transition Function (delta):
+  delta(q0, '"')         = q1    (Opening quotation mark)
+  delta(q1, valid_char)  = q1    (Characters inside string)
+  delta(q1, '"')         = q2    (Closing quotation mark, accepting)
+
+
+================================================================================
+  4. Symbol Table (ST) and Program Internal Form (PIF)
+================================================================================
+
+4.1. Symbol Table (ST)
+----------------------
+- Data Structure: Hash Table with Open Addressing and Linear Probing.
+- Capacity: m = 101 (prime number).
+- Hash Function:
+    h(k) = (sum of ASCII codes of symbol mod 101) + 1
+- Collision Resolution:
+    probe(i) = ((h(k) - 1 + i) mod 101) + 1  for i = 0, 1, 2, ...
+- Identifiers and constants are inserted once; duplicates reuse the existing index.
+
+4.2. Program Internal Form (PIF)
+--------------------------------
+- Reserved words, operators, separators: ST Index = 0.
+- Identifiers: Token = "id", ST Index = 1..101.
+- Constants:   Token = "const", ST Index = 1..101.
+
+
+================================================================================
+  5. Lexical Error Diagnostics
+================================================================================
+
+The scanner performs strict validation and diagnostics:
+  1. Malformed identifiers or numbers (e.g. `123invalid_id`, `007`, `-0`):
+     Detected when numeric FA accepts a prefix but trailing characters violate
+     syntax, or when leading zero / negative zero is detected.
+  2. Invalid characters in strings (e.g. `$` in `"Invalid$CharacterInString"`):
+     String FA stops transitioning and halts in non-final state `q1`.
+  3. Unclosed strings (e.g. `"This string never closes;\n`):
+     String FA encounters end-of-line before reaching accepting state `q2`.
+  4. Unrecognized single characters (e.g. `!`, `@`):
+     Reported as unrecognized token errors.
+
+
+================================================================================
+  6. Verification and Test Results
+================================================================================
+
+All three test programs from Lab 3 were executed against the FA-integrated
+scanner. The results confirm 100% parity with Laboratory 3:
+
+6.1. Program 1 (Cloud Infrastructure Deployment - program1.cloud.txt)
+---------------------------------------------------------------------
+- Execution: SUCCESS (0 lexical errors)
+- Tokens generated in PIF: 537
+- Unique symbols stored in ST: 54 (18 identifiers, 36 constants)
+- Output files: PIF_Program1.out, ST_Program1.out
+
+6.2. Program 2 (Fleet Maintenance - program2.cloud.txt)
+-------------------------------------------------------
+- Execution: SUCCESS (0 lexical errors)
+- Tokens generated in PIF: 335
+- Unique symbols stored in ST: 41
+- Output files: PIF_Program2.out, ST_Program2.out
+
+6.3. Program 3 (Deliberate Error Test - program3_errors.cloud.txt)
+-----------------------------------------------------------------
+Input source code:
+  1: int valid_var = 10;
+  2: int 123invalid_id = 5;
+  3: int leading_zero = 007;
+  4: string bad_str = "Invalid$CharacterInString";
+  5: string unclosed_str = "This string never closes;
+  6: if (valid_var ! 5) {
+  7:     @illegal_symbol = -0;
+  8: }
+
+Scanner Diagnostic Output:
+  Lexical error at line 2: malformed identifier or numeric constant '123invalid_id'
+  Lexical error at line 3: malformed identifier or numeric constant '007'
+  Lexical error at line 4: invalid or unclosed string constant '"Invalid$CharacterInString"'
+  Lexical error at line 5: invalid or unclosed string constant '"This string never closes;'
+  Lexical error at line 6: unrecognized token '!'
+  Lexical error at line 7: unrecognized token '@'
+  Lexical error at line 7: malformed identifier or numeric constant '-0'
+  Lexical analysis finished for 'program3_errors.cloud.txt' with 7 lexical error(s).
+
+All 7 errors were precisely detected and located, and recovery allowed valid
+tokens to be preserved into PIF and ST.
+
+
+================================================================================
+  7. Deliverables Summary
+================================================================================
+
+Folder: `Laboratories/Laboratory_5/`
+  - `fa.h`, `fa.c`: Formal C Finite Automata implementations for ID & CONST.
+  - `scanner.c`: C Scanner integrating the FA functions.
+  - `st.h`, `st.c`: Hash Table Symbol Table and PIF data structures.
+  - `scanner_fa.py`: Cross-platform Python scanner with integrated FA.
+  - `program1.cloud.txt`, `program2.cloud.txt`, `program3_errors.cloud.txt`: Source programs.
+  - Output files: `PIF_*.out` and `ST_*.out`.
+  - `Laboratory5_Documentation.txt`: This documentation.
+
+The original Laboratory 3 scanner (`Laboratories/Laboratory_3/`) remains
+completely preserved and unmodified.
+================================================================================

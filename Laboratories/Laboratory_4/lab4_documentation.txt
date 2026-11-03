@@ -1,0 +1,72 @@
+Laboratory Work 4: Finite Automata and Regular Grammars
+
+1. Formal Definitions
+1.1 Identifiers
+--------------------------------------------------------------------------------
+According to the Cloud Programming Language BNF, identifiers must begin with a 
+letter, followed by any combination of letters, digits, or underscores.
+
+Finite Automaton (FA) Definition:
+M = (Q, Σ, δ, q0, F)
+- Q (States) = {q0, q1}
+- Σ (Alphabet) = {a-z, A-Z, 0-9, _}
+- q0 (Start State) = q0
+- F (Final States) = {q1}
+
+δ (Transitions):
+δ(q0, letter) = q1
+δ(q1, letter) = q1
+δ(q1, digit) = q1
+δ(q1, underscore) = q1
+
+Regular Grammar (RG) Definition:
+G = (N, Σ, P, S)
+- N (Non-terminals) = {S, A}
+- Σ (Alphabet) = {letter, digit, underscore}
+- S (Start Symbol) = S
+
+P (Production Rules):
+S -> letter A | letter
+A -> letter A | digit A | underscore A | letter | digit | underscore
+
+
+1.2 Numeric Constants (Integers)
+--------------------------------------------------------------------------------
+A number is either exactly "0", a positive integer starting with a non-zero 
+digit, or a negative integer starting with "-" followed by a non-zero digit.
+
+Finite Automaton (FA) Definition:
+M = (Q, Σ, δ, q0, F)
+- Q (States) = {q0, q1, q2, q3}
+- Σ (Alphabet) = {0, 1-9, -}
+- q0 (Start State) = q0
+- F (Final States) = {q1, q3}
+
+δ (Transitions):
+δ(q0, 0) = q1              (Matches exactly "0")
+δ(q0, -) = q2              (Matches the negative sign)
+δ(q0, nonzero_digit) = q3  (Starts a positive number)
+δ(q2, nonzero_digit) = q3  (Starts a negative number)
+δ(q3, digit) = q3          (Continues the number)
+
+Regular Grammar (RG) Definition:
+G = (N, Σ, P, S)
+- N (Non-terminals) = {S, A, B}
+- S (Start Symbol) = S
+
+P (Production Rules):
+S -> "0"
+S -> "-" A
+S -> nonzero_digit B | nonzero_digit
+A -> nonzero_digit B | nonzero_digit
+B -> digit B | digit
+
+
+2. FA to RG Transformation Algorithm
+To convert an FA into an equivalent Regular Grammar programmatically:
+1. Every state Q_i in the FA maps to a Non-terminal in the grammar.
+2. A transition δ(Q_i, symbol) = Q_j generates the rule: Q_i -> symbol Q_j.
+3. If Q_j is a final state, a terminating rule Q_i -> symbol is also added.
+
+The automated implementation of this transformation logic is provided in the 
+accompanying fa_to_rg.py script.
