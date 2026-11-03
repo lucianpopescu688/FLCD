@@ -340,9 +340,9 @@ int main(int argc, char **argv) {
     source[bytes_read] = '\0';
     fclose(fp);
 
-    /* Initialize ST and PIF */
-    SymbolTable sym_table;
-    PIF pif_table;
+    /* Initialize ST and PIF (static to avoid stack overflow on Windows 1MB stack) */
+    static SymbolTable sym_table;
+    static PIF pif_table;
     st_init(&sym_table);
     pif_init(&pif_table);
 
