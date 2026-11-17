@@ -1,0 +1,5 @@
+flex sspascal_v2.lxi
+bison -d sspascal.y
+gcc sspascal.tab.c lex.yy.c -o <executable_name>
+<executable_name> <test_input> -d
+// -d for debug mode, displays parsing in detail

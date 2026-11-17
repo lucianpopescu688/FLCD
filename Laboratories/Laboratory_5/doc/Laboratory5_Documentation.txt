@@ -222,13 +222,12 @@ tokens to be preserved into PIF and ST.
 ================================================================================
 
 Folder: `Laboratories/Laboratory_5/`
-  - `fa.h`, `fa.c`: Formal C Finite Automata implementations for ID & CONST.
-  - `scanner.c`: C Scanner integrating the FA functions.
-  - `st.h`, `st.c`: Hash Table Symbol Table and PIF data structures.
-  - `scanner_fa.py`: Cross-platform Python scanner with integrated FA.
-  - `program1.cloud.txt`, `program2.cloud.txt`, `program3_errors.cloud.txt`: Source programs.
-  - Output files: `PIF_*.out` and `ST_*.out`.
-  - `Laboratory5_Documentation.txt`: This documentation.
+  - `src/`: C source code (`scanner.c`, `fa.h`, `fa.c`, `st.h`, `st.c`).
+  - `input/`: Source DSL programs (`program1.cloud.txt`, `program2.cloud.txt`, `program3_errors.cloud.txt`).
+  - `output/`: Generated PIF and ST files (`PIF_*.out`, `ST_*.out`).
+  - `doc/`: Documentation and requirements (`Lab5_2026.docx`, `Laboratory5_Documentation.txt`).
+  - `run_tests.bat`: Automated build and test script for GCC.
+  - `README.md`: Project summary and user manual.
 
 The original Laboratory 3 scanner (`Laboratories/Laboratory_3/`) remains
 completely preserved and unmodified.

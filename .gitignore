@@ -9,6 +9,7 @@ scanner
 .DS_Store
 Thumbs.db
 *.tmp
+*.reg
 
 # IDE configurations
 .idea/

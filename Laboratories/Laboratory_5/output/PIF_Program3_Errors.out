@@ -19,7 +19,7 @@ Position (Code) | Line   | Token                | ST Index (Bucket)  | Matched L
 13              | 4      | string               | 0                  | string
 14              | 4      | id                   | 29                 | bad_str
 15              | 4      | =                    | 0                  | =
-16              | 4      | ;                    | 0                  | ;
+16              | 4      | id                   | 8                  | ghg
 17              | 5      | string               | 0                  | string
 18              | 5      | id                   | 90                 | unclosed_str
 19              | 5      | =                    | 0                  | =

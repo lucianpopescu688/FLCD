@@ -1,0 +1,8 @@
+int valid_var = 10;
+int 123invalid_id = 5;
+int leading_zero = 007;
+string bad_str = "Invalid$CharacterInString";
+string unclosed_str = "This string never closes;
+if (valid_var ! 5) {
+    @illegal_symbol = -0;
+}

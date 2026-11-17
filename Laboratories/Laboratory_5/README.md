@@ -1,12 +1,42 @@
-# FLCD - Laboratory 5: Integrating Finite Automata (FA) into Scanner
+# FLCD - Laboratory 5: Integrating Finite Automata (FA) into Scanner (C Implementation)
 
 ## Overview
-This laboratory assignment enhances the Lexical Analyzer (Scanner) for the domain-specific **Cloud Infrastructure Programming Language** by replacing pattern-based regex token recognition with explicit **Deterministic Finite Automata (DFA)** for:
+This laboratory assignment enhances the Lexical Analyzer (Scanner) for the domain-specific **Cloud Infrastructure Programming Language** by replacing pattern-based regex token recognition with explicit **Deterministic Finite Automata (DFA)** implemented in standard C for:
 1. **Identifiers** ($M_{id}$)
 2. **Numeric Constants** ($M_{num}$)
 3. **String Constants** ($M_{str}$)
 
 The implementation preserves the Symbol Table (ST) based on a custom Hash Table ($m = 101$, linear probing) and Program Internal Form (PIF) from Laboratory 3.
+
+---
+
+## Directory Organization
+
+```
+Laboratory_5/
+├── src/                                  # C source & header files
+│   ├── fa.h                              # FA declarations & mathematical specs
+│   ├── fa.c                              # Explicit FA state-machine transition functions
+│   ├── st.h                              # Symbol Table & PIF structures
+│   ├── st.c                              # Hash Table (m=101) & PIF implementation
+│   └── scanner.c                         # Hand-written scanner driving the FAs
+├── input/                                # Source DSL programs
+│   ├── program1.cloud.txt                # Test program 1 (valid cluster deployment)
+│   ├── program2.cloud.txt                # Test program 2 (valid fleet maintenance)
+│   └── program3_errors.cloud.txt         # Test program 3 (deliberate lexical errors)
+├── output/                               # Generated PIF and Symbol Table outputs
+│   ├── PIF_Program1.out                  # Generated PIF for program 1 (537 tokens)
+│   ├── ST_Program1.out                   # Generated ST for program 1 (54 symbols)
+│   ├── PIF_Program2.out                  # Generated PIF for program 2 (335 tokens)
+│   ├── ST_Program2.out                   # Generated ST for program 2 (41 symbols)
+│   ├── PIF_Program3_Errors.out           # Generated PIF for program 3
+│   └── ST_Program3_Errors.out            # Generated ST for program 3
+├── doc/                                  # Assignment documentation & specifications
+│   ├── Lab5_2026.docx                    # Official laboratory assignment requirements
+│   └── Laboratory5_Documentation.txt     # Comprehensive laboratory technical report
+├── run_tests.bat                         # Automated build & test execution script
+└── README.md                             # Project overview and instructions
+```
 
 ---
 
@@ -28,9 +58,9 @@ The implementation preserves the Symbol Table (ST) based on a custom Hash Table 
 - **Final States:** $F = \{q_1, q_3\}$
 - **Transitions ($\delta$):**
   - $\delta(q_0, \text{'0'}) = q_1$ (matches exactly "0")
-  - $\delta(q_0, \text{'-'}) = q_2$ (negative prefix)
-  - $\delta(q_0, \text{nonzero\_digit}) = q_3$ (positive number)
-  - $\delta(q_2, \text{nonzero\_digit}) = q_3$ (negative number)
+  - $\delta(q_0, \text{'-'}) = q_2$ (negative prefix; strictly requires 1-9 next)
+  - $\delta(q_0, \text{nonzero\_digit}) = q_3$ (positive integer)
+  - $\delta(q_2, \text{nonzero\_digit}) = q_3$ (negative integer)
   - $\delta(q_3, \text{digit}) = q_3$ (subsequent digits)
 
 ### 3. String Constant FA ($M_{str}$)
@@ -45,47 +75,25 @@ The implementation preserves the Symbol Table (ST) based on a custom Hash Table 
 
 ---
 
-## File Structure
+## How to Build & Run (GCC)
 
-```
-Laboratory_5/
-├── fa.h                         # C header: FA declarations and formal specs
-├── fa.c                         # C implementation: state machine transition functions
-├── st.h                         # C header: Symbol Table & PIF structures
-├── st.c                         # C implementation: Hash Table (m=101) & PIF
-├── scanner.c                    # C scanner integrating FA functions
-├── scanner_fa.py                # Python scanner with integrated FA
-├── run_tests.bat                # Automated test runner batch script
-├── program1.cloud.txt           # Test program 1 (valid cluster deployment)
-├── program2.cloud.txt           # Test program 2 (valid fleet maintenance)
-├── program3_errors.cloud.txt    # Test program 3 (deliberate lexical errors)
-├── PIF_Program1.out             # Generated PIF for program 1 (537 tokens)
-├── ST_Program1.out              # Generated ST for program 1 (54 symbols)
-├── PIF_Program2.out             # Generated PIF for program 2 (335 tokens)
-├── ST_Program2.out              # Generated ST for program 2 (41 symbols)
-├── PIF_Program3_Errors.out      # Generated PIF for program 3
-├── ST_Program3_Errors.out       # Generated ST for program 3
-└── Laboratory5_Documentation.txt# Comprehensive laboratory report
+### Automated:
+Double-click `run_tests.bat` or run:
+```bat
+.\run_tests.bat
 ```
 
----
-
-## How to Run
-
-### Python Version:
+### Manual Commands:
 ```bash
-py scanner_fa.py program1.cloud.txt PIF_Program1.out ST_Program1.out
-py scanner_fa.py program2.cloud.txt PIF_Program2.out ST_Program2.out
-py scanner_fa.py program3_errors.cloud.txt PIF_Program3_Errors.out ST_Program3_Errors.out
-```
-Or simply double-click `run_tests.bat`.
+cd Laboratories/Laboratory_5
 
-### C Version (GCC):
-```bash
-gcc -Wall -Wextra -o scanner.exe scanner.c fa.c st.c
-./scanner.exe program1.cloud.txt PIF_Program1.out ST_Program1.out
-./scanner.exe program2.cloud.txt PIF_Program2.out ST_Program2.out
-./scanner.exe program3_errors.cloud.txt PIF_Program3_Errors.out ST_Program3_Errors.out
+# Compile
+gcc -Wall -Wextra -O2 -I src -o bin/scanner.exe src/scanner.c src/fa.c src/st.c
+
+# Run tests
+bin/scanner.exe input/program1.cloud.txt output/PIF_Program1.out output/ST_Program1.out
+bin/scanner.exe input/program2.cloud.txt output/PIF_Program2.out output/ST_Program2.out
+bin/scanner.exe input/program3_errors.cloud.txt output/PIF_Program3_Errors.out output/ST_Program3_Errors.out
 ```
 
 ---

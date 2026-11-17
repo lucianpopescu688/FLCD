@@ -67,6 +67,21 @@ static int is_in_list(const char *word, const char **list) {
     return 0;
 }
 
+/* Determine if a '-' is in unary context based on the last emitted PIF token.
+ * If the previous token was an identifier, constant, or closing delimiter,
+ * '-' functions as a binary subtraction operator. Otherwise, it is unary. */
+static int is_unary_context(const PIF *pif) {
+    if (pif->count == 0) return 1;
+    const PIFEntry *last = &pif->entries[pif->count - 1];
+    if (strcmp(last->token, "id") == 0 ||
+        strcmp(last->token, "const") == 0 ||
+        strcmp(last->token, ")") == 0 ||
+        strcmp(last->token, "]") == 0) {
+        return 0;
+    }
+    return 1;
+}
+
 /* Try to match one of the multi-char operators at position `src`.
  * Returns the length of the matched operator, or 0 if none matched. */
 static int match_operator(const char *src) {
@@ -130,65 +145,52 @@ static void scan(const char *source, SymbolTable *st, PIF *pif,
 
         /* ── 5. Operators & Negative numbers ───────────────────── */
         {
-            /* Check if '-' is the start of a malformed or valid negative number */
-            if (source[pos] == '-') {
-                /* Look backward to see if '-' could be a unary minus */
-                int prev = pos - 1;
-                while (prev >= 0 && (source[prev] == ' ' ||
-                       source[prev] == '\t' || source[prev] == '\r'))
-                    prev--;
-
-                int is_unary = (prev < 0 ||
-                                source[prev] == '=' || source[prev] == '(' ||
-                                source[prev] == '[' || source[prev] == ',' ||
-                                source[prev] == ';' || source[prev] == ':' ||
-                                source[prev] == '{');
-
-                if (is_unary && pos + 1 < len) {
-                    /* Malformed negative zero: -0, -01, etc. */
-                    if (source[pos + 1] == '0') {
-                        int start = pos;
-                        pos += 2;
-                        while (pos < len && (isalnum((unsigned char)source[pos]) || source[pos] == '_'))
-                            pos++;
-                        int err_len = pos - start;
-                        if (err_len >= MAX_SYMBOL_LEN) err_len = MAX_SYMBOL_LEN - 1;
-                        strncpy(token_buf, &source[start], err_len);
-                        token_buf[err_len] = '\0';
+            /* Check if '-' is a unary minus for a negative numeric constant */
+            if (source[pos] == '-' && is_unary_context(pif) && pos + 1 < len && isdigit((unsigned char)source[pos + 1])) {
+                /* Let fa_number be the single source of truth for numeric constants */
+                int num_len = fa_number(&source[pos]);
+                if (num_len > 0) {
+                    /* Check for malformed negative number like -5abc */
+                    int total = num_len;
+                    int malformed = 0;
+                    while (pos + total < len &&
+                           (isalnum((unsigned char)source[pos + total]) ||
+                            source[pos + total] == '_')) {
+                        total++;
+                        malformed = 1;
+                    }
+                    if (malformed) {
+                        strncpy(token_buf, &source[pos], total);
+                        token_buf[total] = '\0';
                         printf("Lexical error at line %d: malformed identifier or numeric constant '%s'\n",
                                line_num, token_buf);
                         (*error_count)++;
+                        pos += total;
                         continue;
                     }
-
-                    /* Try FA for negative number */
-                    int num_len = fa_number(&source[pos]);
-                    if (num_len > 0) {
-                        /* Check for malformed negative number like -5abc */
-                        int total = num_len;
-                        int malformed = 0;
-                        while (pos + total < len &&
-                               (isalnum((unsigned char)source[pos + total]) ||
-                                source[pos + total] == '_')) {
-                            total++;
-                            malformed = 1;
-                        }
-                        if (malformed) {
-                            strncpy(token_buf, &source[pos], total);
-                            token_buf[total] = '\0';
-                            printf("Lexical error at line %d: malformed identifier or numeric constant '%s'\n",
-                                   line_num, token_buf);
-                            (*error_count)++;
-                            pos += total;
-                            continue;
-                        }
-                        strncpy(token_buf, &source[pos], num_len);
-                        token_buf[num_len] = '\0';
-                        int stp = st_pos(st, token_buf, "CONST");
-                        genPIF(pif, "const", stp, token_buf, line_num);
-                        pos += num_len;
-                        continue;
+                    strncpy(token_buf, &source[pos], num_len);
+                    token_buf[num_len] = '\0';
+                    int stp = st_pos(st, token_buf, "CONST");
+                    genPIF(pif, "const", stp, token_buf, line_num);
+                    pos += num_len;
+                    continue;
+                } else {
+                    /* FA rejected (e.g. -0, -007 because state 2 strictly requires 1-9) */
+                    int start = pos;
+                    pos++; /* consume '-' */
+                    while (pos < len &&
+                           (isalnum((unsigned char)source[pos]) ||
+                            source[pos] == '_')) {
+                        pos++;
                     }
+                    int err_len = pos - start;
+                    if (err_len >= MAX_SYMBOL_LEN) err_len = MAX_SYMBOL_LEN - 1;
+                    strncpy(token_buf, &source[start], err_len);
+                    token_buf[err_len] = '\0';
+                    printf("Lexical error at line %d: malformed identifier or numeric constant '%s'\n",
+                           line_num, token_buf);
+                    (*error_count)++;
+                    continue;
                 }
             }
 
