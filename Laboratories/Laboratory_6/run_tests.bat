@@ -21,6 +21,7 @@ echo ===================================================================
 %BISON% -d -v parser.y
 if %ERRORLEVEL% NEQ 0 (
     echo [FAIL] Bison failed to compile parser.y
+    pause
     exit /b 1
 )
 echo [OK] Bison generated parser.tab.c and parser.tab.h
@@ -49,6 +50,7 @@ echo ===================================================================
 %FLEX% scanner.lxi
 if %ERRORLEVEL% NEQ 0 (
     echo [FAIL] Flex failed to compile scanner.lxi
+    pause
     exit /b 1
 )
 echo [OK] Flex generated lex.yy.c
@@ -62,6 +64,7 @@ if %ERRORLEVEL% NEQ 0 (
     echo [FAIL] GCC compilation failed:
     type gcc_errors.tmp
     del gcc_errors.tmp 2>nul
+    pause
     exit /b 1
 )
 del gcc_errors.tmp 2>nul
@@ -151,3 +154,5 @@ echo    - productions_program3.out
 echo    - PIF_Program1.out, ST_Program1.out
 echo    - PIF_Program2.out, ST_Program2.out
 echo ===================================================================
+echo.
+pause
