@@ -1,0 +1,61 @@
+========================================================================
+  SYMBOL TABLE (Hash Table, m = 101, Open Addressing / Linear Probing)
+  Hash Function: h(k) = (sum_ASCII(k) mod 101) + 1
+  Total Unique Symbols: 54
+========================================================================
+Position   | Initial h(k) | Category   | Symbolic Name (Lexeme)
+-----------+--------------+------------+--------------------------------
+1          | 1            | CONST      | "API stopped unexpectedly, restarting."
+3          | 3            | ID         | retry_count
+4          | 4            | CONST      | 80
+5          | 5            | CONST      | 45
+6          | 6            | ID         | backend
+7          | 5            | ID         | i
+8          | 6            | ID         | j
+9          | 6            | CONST      | "Restarted a crashed service."
+12         | 12           | ID         | api
+14         | 14           | ID         | database
+19         | 19           | CONST      | false
+21         | 21           | CONST      | "Deployment sequence complete."
+22         | 22           | CONST      | "Beginning cluster deployment."
+28         | 28           | CONST      | "Database not yet ready, retrying..."
+29         | 29           | CONST      | "API in error state, full restart."
+30         | 30           | CONST      | "Started a stopped service."
+32         | 32           | ID         | scaling_needed
+35         | 35           | CONST      | "Database failed after max retries."
+36         | 35           | CONST      | "Unknown API state detected."
+37         | 37           | CONST      | "backup-worker-01"
+38         | 35           | CONST      | "Cache was not running, restarted."
+39         | 39           | CONST      | STOPPED
+41         | 41           | CONST      | RUNNING
+42         | 42           | ID         | node_ips
+45         | 45           | CONST      | "10.0.0.1"
+46         | 45           | CONST      | true
+49         | 49           | CONST      | 0
+50         | 50           | CONST      | 1
+51         | 51           | CONST      | 2
+52         | 52           | CONST      | 3
+53         | 50           | CONST      | "Network layer initialized successfully."
+54         | 54           | CONST      | 5
+55         | 53           | CONST      | "Network startup failed, retrying."
+56         | 55           | CONST      | "API is healthy."
+60         | 60           | ID         | num_nodes
+61         | 61           | ID         | services
+64         | 64           | CONST      | "prod-east-1"
+65         | 65           | ID         | threshold
+69         | 69           | CONST      | "Enabled autostart for network."
+71         | 71           | ID         | current_load
+72         | 72           | ID         | network
+73         | 71           | ID         | cluster_name
+75         | 75           | ID         | primary_ip
+77         | 77           | ID         | max_retries
+80         | 80           | CONST      | "All backend services launched."
+92         | 92           | CONST      | ERROR
+93         | 93           | CONST      | "10.0.0.10"
+94         | 94           | CONST      | "10.0.0.11"
+95         | 95           | CONST      | "10.0.0.12"
+96         | 93           | CONST      | "Pinged node successfully."
+97         | 97           | ID         | cache
+98         | 98           | CONST      | 10
+99         | 99           | ID         | current_state
+100        | 100          | CONST      | "Load exceeded threshold, scaling up."

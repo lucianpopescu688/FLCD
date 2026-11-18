@@ -1,0 +1,9 @@
+========================================================================
+  SYMBOL TABLE (Hash Table, m = 101, Open Addressing / Linear Probing)
+  Hash Function: h(k) = (sum_ASCII(k) mod 101) + 1
+  Total Unique Symbols: 2
+========================================================================
+Position   | Initial h(k) | Category   | Symbolic Name (Lexeme)
+-----------+--------------+------------+--------------------------------
+44         | 44           | ID         | valid_var
+98         | 98           | CONST      | 10

@@ -1,0 +1,48 @@
+========================================================================
+  SYMBOL TABLE (Hash Table, m = 101, Open Addressing / Linear Probing)
+  Hash Function: h(k) = (sum_ASCII(k) mod 101) + 1
+  Total Unique Symbols: 41
+========================================================================
+Position   | Initial h(k) | Category   | Symbolic Name (Lexeme)
+-----------+--------------+------------+--------------------------------
+1          | 1            | CONST      | 50
+4          | 4            | CONST      | 80
+8          | 8            | ID         | total_servers
+9          | 9            | CONST      | "192.168.1.100"
+10         | 9            | ID         | m
+12         | 12           | CONST      | "Load balanced evenly."
+19         | 19           | CONST      | false
+20         | 20           | CONST      | "Server unreachable, replacing."
+24         | 24           | ID         | cycle
+25         | 25           | CONST      | "Fleet critically degraded!"
+29         | 29           | CONST      | "Emergency: immediate intervention needed."
+31         | 31           | CONST      | "Slight imbalance detected."
+32         | 32           | ID         | index
+41         | 41           | CONST      | "Fleet check starting."
+42         | 42           | ID         | load_score
+45         | 45           | CONST      | 100
+46         | 45           | CONST      | "Fleet partially degraded."
+47         | 47           | ID         | fleet_ips
+48         | 45           | CONST      | true
+49         | 49           | CONST      | 0
+50         | 50           | ID         | failed_count
+51         | 50           | CONST      | 1
+52         | 51           | CONST      | 2
+53         | 52           | CONST      | 3
+54         | 54           | CONST      | 5
+55         | 53           | CONST      | 4
+56         | 56           | ID         | maintenance_mode
+57         | 52           | CONST      | "Rebalancing needed."
+61         | 61           | CONST      | "Fleet maintenance complete."
+62         | 62           | CONST      | "192.168.1.10"
+63         | 63           | ID         | report
+64         | 63           | CONST      | "192.168.1.11"
+65         | 64           | CONST      | "192.168.1.12"
+66         | 65           | CONST      | "192.168.1.13"
+67         | 66           | CONST      | "192.168.1.14"
+68         | 66           | CONST      | "192.168.1.50"
+69         | 63           | CONST      | "Fleet health is good."
+73         | 73           | ID         | active_count
+74         | 74           | CONST      | "Running maintenance cycle."
+80         | 80           | CONST      | "Unexpected load calculation."
+100        | 100          | CONST      | 30

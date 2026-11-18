@@ -1,0 +1,155 @@
+%{
+/*
+ * Laboratory 6 - Lexical Analyzer (Flex Specification)
+ * Language: Cloud Infrastructure DSL
+ *
+ * Updated for Yacc/Bison integration:
+ *   - #include "parser.tab.h" for terminal token definitions
+ *   - #define YY_DECL int flex_yylex(void) to allow dual-mode dispatch
+ *   - Returns terminal token codes to yyparse()
+ *   - Generates PIF (Program Internal Form) and Symbol Table (ST)
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include "st.h"
+#include "parser.tab.h"
+
+#define YY_DECL int flex_yylex(void)
+
+SymbolTable sym_table;
+PIF pif_table;
+int line_num = 1;
+int error_count = 0;
+%}
+
+%option noyywrap
+
+/* Definitions Section (Regular Expression Macros) */
+LETTER          [a-zA-Z]
+DIGIT           [0-9]
+NONZERO_DIGIT   [1-9]
+IDENTIFIER      {LETTER}({LETTER}|{DIGIT}|"_")*
+NUMBER_CONST    "0"|("-"?{NONZERO_DIGIT}{DIGIT}*)
+BOOL_CONST      "true"|"false"
+STATE_CONST     "RUNNING"|"STOPPED"|"ERROR"
+STRING_CHAR     [a-zA-Z0-9 .:\-_,!/@#?=&]
+STRING_CONST    \"{STRING_CHAR}*\"
+
+/* Lexical Error Patterns (Malformed Numbers/Identifiers & Strings) */
+ERR_NUM_ID      "-0"|("-"?"0"({DIGIT}|{LETTER}|"_")+)|("-"?{NONZERO_DIGIT}{DIGIT}*({LETTER}|"_")({LETTER}|{DIGIT}|"_")*)
+ERR_STRING      \"[^\"\n]*\"?
+
+%%
+
+"%%"[^%]*"%%"                               {
+                                                for (int i = 0; yytext[i] != '\0'; i++) {
+                                                    if (yytext[i] == '\n') line_num++;
+                                                }
+                                            }
+"//".*                                      { /* Ignore single-line comments */ }
+[ \t\r]+                                    { /* Ignore whitespace */ }
+\n                                          { line_num++; }
+
+"int"               { genPIF(&pif_table, yytext, 0, yytext, line_num); return INT_T; }
+"string"            { genPIF(&pif_table, yytext, 0, yytext, line_num); return STRING_T; }
+"boolean"           { genPIF(&pif_table, yytext, 0, yytext, line_num); return BOOLEAN_T; }
+"process"           { genPIF(&pif_table, yytext, 0, yytext, line_num); return PROCESS_T; }
+"state"             { genPIF(&pif_table, yytext, 0, yytext, line_num); return STATE_T; }
+"group"             { genPIF(&pif_table, yytext, 0, yytext, line_num); return GROUP_T; }
+"ip_address"        { genPIF(&pif_table, yytext, 0, yytext, line_num); return IP_ADDRESS_T; }
+
+"depends_on"        { genPIF(&pif_table, yytext, 0, yytext, line_num); return DEPENDS_ON; }
+"if"                { genPIF(&pif_table, yytext, 0, yytext, line_num); return IF; }
+"else"              { genPIF(&pif_table, yytext, 0, yytext, line_num); return ELSE; }
+"switch"            { genPIF(&pif_table, yytext, 0, yytext, line_num); return SWITCH; }
+"case"              { genPIF(&pif_table, yytext, 0, yytext, line_num); return CASE; }
+"default"           { genPIF(&pif_table, yytext, 0, yytext, line_num); return DEFAULT; }
+"while"             { genPIF(&pif_table, yytext, 0, yytext, line_num); return WHILE; }
+"for"               { genPIF(&pif_table, yytext, 0, yytext, line_num); return FOR; }
+"break"             { genPIF(&pif_table, yytext, 0, yytext, line_num); return BREAK; }
+"continue"          { genPIF(&pif_table, yytext, 0, yytext, line_num); return CONTINUE; }
+"try"               { genPIF(&pif_table, yytext, 0, yytext, line_num); return TRY; }
+"catch"             { genPIF(&pif_table, yytext, 0, yytext, line_num); return CATCH; }
+"wait_seconds"      { genPIF(&pif_table, yytext, 0, yytext, line_num); return WAIT_SECONDS; }
+
+"ping_server"       { genPIF(&pif_table, yytext, 0, yytext, line_num); return PING_SERVER; }
+"spin_up_instance"  { genPIF(&pif_table, yytext, 0, yytext, line_num); return SPIN_UP_INSTANCE; }
+"kill_instance"     { genPIF(&pif_table, yytext, 0, yytext, line_num); return KILL_INSTANCE; }
+"log_alert"         { genPIF(&pif_table, yytext, 0, yytext, line_num); return LOG_ALERT; }
+
+"start"             { genPIF(&pif_table, yytext, 0, yytext, line_num); return START; }
+"stop"              { genPIF(&pif_table, yytext, 0, yytext, line_num); return STOP; }
+"restart"           { genPIF(&pif_table, yytext, 0, yytext, line_num); return RESTART; }
+"enable"            { genPIF(&pif_table, yytext, 0, yytext, line_num); return ENABLE; }
+"disable"           { genPIF(&pif_table, yytext, 0, yytext, line_num); return DISABLE; }
+"status"            { genPIF(&pif_table, yytext, 0, yytext, line_num); return STATUS; }
+"autostart"         { genPIF(&pif_table, yytext, 0, yytext, line_num); return AUTOSTART; }
+
+"and"               { genPIF(&pif_table, yytext, 0, yytext, line_num); return AND; }
+"or"                { genPIF(&pif_table, yytext, 0, yytext, line_num); return OR; }
+"not"               { genPIF(&pif_table, yytext, 0, yytext, line_num); return NOT; }
+
+"true"              { int pos = st_pos(&sym_table, yytext, "CONST"); genPIF(&pif_table, "const", pos, yytext, line_num); return TRUE_T; }
+"false"             { int pos = st_pos(&sym_table, yytext, "CONST"); genPIF(&pif_table, "const", pos, yytext, line_num); return FALSE_T; }
+"RUNNING"           { int pos = st_pos(&sym_table, yytext, "CONST"); genPIF(&pif_table, "const", pos, yytext, line_num); return RUNNING_T; }
+"STOPPED"           { int pos = st_pos(&sym_table, yytext, "CONST"); genPIF(&pif_table, "const", pos, yytext, line_num); return STOPPED_T; }
+"ERROR"             { int pos = st_pos(&sym_table, yytext, "CONST"); genPIF(&pif_table, "const", pos, yytext, line_num); return ERROR_T; }
+
+"=="                { genPIF(&pif_table, yytext, 0, yytext, line_num); return EQ; }
+"!="                { genPIF(&pif_table, yytext, 0, yytext, line_num); return NE; }
+"<="                { genPIF(&pif_table, yytext, 0, yytext, line_num); return LE; }
+">="                { genPIF(&pif_table, yytext, 0, yytext, line_num); return GE; }
+"="                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '='; }
+"+"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '+'; }
+"-"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '-'; }
+"*"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '*'; }
+"/"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '/'; }
+"%"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '%'; }
+"<"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '<'; }
+">"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '>'; }
+
+";"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return ';'; }
+":"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return ':'; }
+","                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return ','; }
+"("                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '('; }
+")"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return ')'; }
+"["                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '['; }
+"]"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return ']'; }
+"{"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '{'; }
+"}"                 { genPIF(&pif_table, yytext, 0, yytext, line_num); return '}'; }
+
+{ERR_NUM_ID}        {
+                        printf("Lexical error at line %d: malformed identifier or numeric constant '%s'\n", line_num, yytext);
+                        error_count++;
+                    }
+
+{NUMBER_CONST}      {
+                        int pos = st_pos(&sym_table, yytext, "CONST");
+                        genPIF(&pif_table, "const", pos, yytext, line_num);
+                        return NUMBER;
+                    }
+
+{STRING_CONST}      {
+                        int pos = st_pos(&sym_table, yytext, "CONST");
+                        genPIF(&pif_table, "const", pos, yytext, line_num);
+                        return STRING_CONST;
+                    }
+
+{ERR_STRING}        {
+                        printf("Lexical error at line %d: invalid or unclosed string constant '%s'\n", line_num, yytext);
+                        error_count++;
+                    }
+
+{IDENTIFIER}        {
+                        int pos = st_pos(&sym_table, yytext, "ID");
+                        genPIF(&pif_table, "id", pos, yytext, line_num);
+                        return ID;
+                    }
+
+.                   {
+                        printf("Lexical error at line %d: unrecognized token '%s'\n", line_num, yytext);
+                        error_count++;
+                    }
+
+%%

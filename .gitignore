@@ -14,3 +14,7 @@ Thumbs.db
 # IDE configurations
 .idea/
 .vscode/
+
+# Local build tools
+Laboratories/Laboratory_6/tools/
+
